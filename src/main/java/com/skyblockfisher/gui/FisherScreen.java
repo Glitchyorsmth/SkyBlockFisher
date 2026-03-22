@@ -31,7 +31,7 @@ public class FisherScreen extends Screen {
 
     private int panelX, panelY;
     private static final int PANEL_W = 340;
-    private static final int PANEL_H = 430;
+    private static final int PANEL_H = 460;
 
     // Tab state
     private int activeTab = 0; // 0 = Main, 1 = Humanization, 2 = Flay
@@ -59,16 +59,24 @@ public class FisherScreen extends Screen {
     private ButtonWidget cameraJitterBtn;
     private ButtonWidget whisperPauseBtn;
 
-    // Flay tab widgets
-    private ButtonWidget flayToggleBtn;
+    // Kill tab widgets — shared
     private TextFieldWidget rodSlotField;
+
+    // Kill tab widgets — Flaming Flay subsection
+    private ButtonWidget flayToggleBtn;
     private TextFieldWidget flaySlotField;
     private TextFieldWidget flayKillMinField, flayKillMaxField;
+
+    // Kill tab widgets — Strider subsection
+    private ButtonWidget striderToggleBtn;
+    private TextFieldWidget striderSlotField;
+    private TextFieldWidget striderKillMaxField;
+    private TextFieldWidget striderCpsField;
 
     // Tab buttons
     private ButtonWidget tabMainBtn;
     private ButtonWidget tabHumanBtn;
-    private ButtonWidget tabFlayBtn;
+    private ButtonWidget tabKillBtn;
 
     private boolean showSoundLog = false;
 
@@ -90,15 +98,15 @@ public class FisherScreen extends Screen {
                 .dimensions(lx, panelY + 32, thirdW, 16).build();
         tabHumanBtn = ButtonWidget.builder(Text.literal("Anti-Detect"), btn -> switchTab(1))
                 .dimensions(lx + thirdW + 6, panelY + 32, thirdW, 16).build();
-        tabFlayBtn = ButtonWidget.builder(Text.literal("Flay"), btn -> switchTab(2))
+        tabKillBtn = ButtonWidget.builder(Text.literal("Killing"), btn -> switchTab(2))
                 .dimensions(lx + (thirdW + 6) * 2, panelY + 32, thirdW, 16).build();
         addDrawableChild(tabMainBtn);
         addDrawableChild(tabHumanBtn);
-        addDrawableChild(tabFlayBtn);
+        addDrawableChild(tabKillBtn);
 
         initMainTab(lx, fw);
         initHumanTab(lx, fw);
-        initFlayTab(lx, fw);
+        initKillTab(lx, fw);
         switchTab(activeTab);
     }
 
@@ -274,33 +282,55 @@ public class FisherScreen extends Screen {
         addDrawableChild(whisperPauseBtn);
     }
 
-    private void initFlayTab(int lx, int fw) {
+    private void initKillTab(int lx, int fw) {
         int y = panelY + 62;
 
-        // Flaming Flay toggle
-        flayToggleBtn = makeToggleBtn("Flaming Flay Kill", ModConfig.flamingFlayEnabled, lx, y, fw, btn -> {
-            ModConfig.flamingFlayEnabled = !ModConfig.flamingFlayEnabled;
-            btn.setMessage(toggleText("Flaming Flay Kill", ModConfig.flamingFlayEnabled));
-        });
-        addDrawableChild(flayToggleBtn);
-        y += 34;
-
-        // Fishing Rod slot
+        // --- Shared: Rod slot ---
         rodSlotField = makeField(lx + 180, y, 30, String.valueOf(ModConfig.fishingRodSlot));
         addDrawableChild(rodSlotField);
-        y += 24;
+        y += 28;
 
-        // Flaming Flay slot
+        // --- Flaming Flay subsection ---
+        flayToggleBtn = makeToggleBtn("Flaming Flay", ModConfig.flamingFlayEnabled, lx, y, fw, btn -> {
+            ModConfig.flamingFlayEnabled = !ModConfig.flamingFlayEnabled;
+            if (ModConfig.flamingFlayEnabled) ModConfig.striderFishingEnabled = false;
+            btn.setMessage(toggleText("Flaming Flay", ModConfig.flamingFlayEnabled));
+            striderToggleBtn.setMessage(toggleText("Strider Kill", ModConfig.striderFishingEnabled));
+        });
+        addDrawableChild(flayToggleBtn);
+        y += 22;
+
         flaySlotField = makeField(lx + 180, y, 30, String.valueOf(ModConfig.flamingFlaySlot));
         addDrawableChild(flaySlotField);
-        y += 34;
+        y += 22;
 
-        // Kill wait delay
         flayKillMinField = makeField(lx + 180, y, 40, String.valueOf(ModConfig.flamingFlayKillWaitMin));
         addDrawableChild(flayKillMinField);
-        y += 24;
+        y += 22;
         flayKillMaxField = makeField(lx + 180, y, 40, String.valueOf(ModConfig.flamingFlayKillWaitMax));
         addDrawableChild(flayKillMaxField);
+        y += 32;
+
+        // --- Strider subsection ---
+        striderToggleBtn = makeToggleBtn("Strider Kill", ModConfig.striderFishingEnabled, lx, y, fw, btn -> {
+            ModConfig.striderFishingEnabled = !ModConfig.striderFishingEnabled;
+            if (ModConfig.striderFishingEnabled) ModConfig.flamingFlayEnabled = false;
+            btn.setMessage(toggleText("Strider Kill", ModConfig.striderFishingEnabled));
+            flayToggleBtn.setMessage(toggleText("Flaming Flay", ModConfig.flamingFlayEnabled));
+        });
+        addDrawableChild(striderToggleBtn);
+        y += 22;
+
+        striderSlotField = makeField(lx + 180, y, 30, String.valueOf(ModConfig.striderWeaponSlot));
+        addDrawableChild(striderSlotField);
+        y += 22;
+
+        striderKillMaxField = makeField(lx + 180, y, 40, String.valueOf(ModConfig.striderKillWaitMax));
+        addDrawableChild(striderKillMaxField);
+        y += 22;
+
+        striderCpsField = makeField(lx + 180, y, 40, String.valueOf(ModConfig.striderCps));
+        addDrawableChild(striderCpsField);
     }
 
     private void switchTab(int tab) {
@@ -336,13 +366,17 @@ public class FisherScreen extends Screen {
         cameraJitterBtn.visible = human;
         whisperPauseBtn.visible = human;
 
-        // Flay tab widgets
-        boolean flay = tab == 2;
-        flayToggleBtn.visible = flay;
-        rodSlotField.visible = flay;
-        flaySlotField.visible = flay;
-        flayKillMinField.visible = flay;
-        flayKillMaxField.visible = flay;
+        // Kill tab widgets
+        boolean kill = tab == 2;
+        rodSlotField.visible = kill;
+        flayToggleBtn.visible = kill;
+        flaySlotField.visible = kill;
+        flayKillMinField.visible = kill;
+        flayKillMaxField.visible = kill;
+        striderToggleBtn.visible = kill;
+        striderSlotField.visible = kill;
+        striderKillMaxField.visible = kill;
+        striderCpsField.visible = kill;
     }
 
     // ---- Rendering ----
@@ -404,7 +438,7 @@ public class FisherScreen extends Screen {
         } else if (activeTab == 1) {
             renderHumanLabels(ctx, lx);
         } else {
-            renderFlayLabels(ctx, lx);
+            renderKillLabels(ctx, lx);
         }
 
         // Hotkey hint
@@ -464,27 +498,37 @@ public class FisherScreen extends Screen {
         ctx.drawTextWithShadow(textRenderer, "Miss chance (%):", lx, y + 4, TEXT_DIM);
     }
 
-    private void renderFlayLabels(DrawContext ctx, int lx) {
+    private void renderKillLabels(DrawContext ctx, int lx) {
         int y = panelY + 62;
-        y += 34; // after toggle button
 
+        // Shared rod slot
         ctx.drawTextWithShadow(textRenderer, "Fishing Rod Slot (1-9):", lx, y + 4, TEXT_DIM);
-        y += 24;
-        ctx.drawTextWithShadow(textRenderer, "Flaming Flay Slot (1-9):", lx, y + 4, TEXT_DIM);
-        y += 34;
+        y += 28;
 
-        ctx.drawTextWithShadow(textRenderer, "Kill Wait Min (ticks):", lx, y + 4, TEXT_DIM);
-        y += 24;
-        ctx.drawTextWithShadow(textRenderer, "Kill Wait Max (ticks):", lx, y + 4, TEXT_DIM);
-        y += 34;
+        // --- Flaming Flay section header ---
+        ctx.drawTextWithShadow(textRenderer,
+                Text.literal("--- Flaming Flay ---").formatted(Formatting.GOLD).getString(),
+                lx, y - 8, YELLOW);
+        y += 22; // after toggle
 
-        // Flow description
-        int descColor = 0xFF556677;
-        ctx.drawTextWithShadow(textRenderer, "Flow: Catch > Swap to Flay >", lx, y, descColor);
-        y += 12;
-        ctx.drawTextWithShadow(textRenderer, "Use Flay > Wait for Kill >", lx, y, descColor);
-        y += 12;
-        ctx.drawTextWithShadow(textRenderer, "Swap back to Rod > Recast", lx, y, descColor);
+        ctx.drawTextWithShadow(textRenderer, "Flay Slot (1-9):", lx + 10, y + 4, TEXT_DIM);
+        y += 22;
+        ctx.drawTextWithShadow(textRenderer, "Kill Wait Min (ticks):", lx + 10, y + 4, TEXT_DIM);
+        y += 22;
+        ctx.drawTextWithShadow(textRenderer, "Kill Wait Max (ticks):", lx + 10, y + 4, TEXT_DIM);
+        y += 32;
+
+        // --- Strider section header ---
+        ctx.drawTextWithShadow(textRenderer,
+                Text.literal("--- Strider Kill ---").formatted(Formatting.RED).getString(),
+                lx, y - 8, RED);
+        y += 22; // after toggle
+
+        ctx.drawTextWithShadow(textRenderer, "Weapon Slot (1-9):", lx + 10, y + 4, TEXT_DIM);
+        y += 22;
+        ctx.drawTextWithShadow(textRenderer, "Kill Wait Max (ticks):", lx + 10, y + 4, TEXT_DIM);
+        y += 22;
+        ctx.drawTextWithShadow(textRenderer, "CPS (1-20):", lx + 10, y + 4, TEXT_DIM);
     }
 
     private void renderSoundLog(DrawContext ctx) {
@@ -570,6 +614,9 @@ public class FisherScreen extends Screen {
         ModConfig.flamingFlaySlot = Math.max(1, Math.min(9, parseIntSafe(flaySlotField.getText(), 2)));
         ModConfig.flamingFlayKillWaitMin = parseIntSafe(flayKillMinField.getText(), 20);
         ModConfig.flamingFlayKillWaitMax = parseIntSafe(flayKillMaxField.getText(), 40);
+        ModConfig.striderWeaponSlot = Math.max(1, Math.min(9, parseIntSafe(striderSlotField.getText(), 3)));
+        ModConfig.striderKillWaitMax = parseIntSafe(striderKillMaxField.getText(), 100);
+        ModConfig.striderCps = Math.max(1, Math.min(20, parseIntSafe(striderCpsField.getText(), 14)));
         ModConfig.save();
     }
 
