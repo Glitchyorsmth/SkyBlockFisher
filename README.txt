@@ -1,4 +1,4 @@
-SkyBlock Fisher - Auto-Fishing Mod (Fabric 1.21.1)
+SkyBlock Fisher - Auto-Fishing Mod (Fabric 1.21.10)
 ==================================================
 
 REQUIREMENTS
