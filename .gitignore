@@ -2,8 +2,10 @@
 build/
 run/
 *.class
-*.jar
 *.log
 .idea/
 *.iml
 .vscode/
+
+# Keep gradle wrapper jar
+!gradle/wrapper/gradle-wrapper.jar
