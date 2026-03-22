@@ -9,6 +9,8 @@ import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 
+import com.skyblockfisher.UpdateChecker;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,9 +31,7 @@ public class FisherScreen extends Screen {
 
     private final FishingHandler handler = FishingHandler.getInstance();
 
-    private int panelX, panelY;
-    private static final int PANEL_W = 340;
-    private static final int PANEL_H = 460;
+    private int panelX, panelY, panelW, panelH;
 
     // Tab state
     private int activeTab = 0; // 0 = Main, 1 = Humanization, 2 = Flay
@@ -78,6 +78,10 @@ public class FisherScreen extends Screen {
     private ButtonWidget tabHumanBtn;
     private ButtonWidget tabKillBtn;
 
+    // Update widgets
+    private ButtonWidget updateBtn;
+    private boolean showChangelog = false;
+
     private boolean showSoundLog = false;
 
     public FisherScreen() {
@@ -86,11 +90,14 @@ public class FisherScreen extends Screen {
 
     @Override
     protected void init() {
-        panelX = (width - PANEL_W) / 2;
-        panelY = (height - PANEL_H) / 2;
+        // Scale to fit any resolution — cap at max size, shrink if screen is small
+        panelW = Math.min(340, width - 20);
+        panelH = Math.min(460, height - 20);
+        panelX = (width - panelW) / 2;
+        panelY = (height - panelH) / 2;
 
         int lx = panelX + 15;
-        int fw = PANEL_W - 30;
+        int fw = panelW - 30;
         int thirdW = (fw - 12) / 3;
 
         // --- Tab buttons ---
@@ -103,6 +110,20 @@ public class FisherScreen extends Screen {
         addDrawableChild(tabMainBtn);
         addDrawableChild(tabHumanBtn);
         addDrawableChild(tabKillBtn);
+
+        // --- Update button (only visible when update available) ---
+        updateBtn = ButtonWidget.builder(getUpdateBtnText(), btn -> {
+            if (UpdateChecker.isDownloaded()) {
+                // Already downloaded, toggle changelog
+                showChangelog = !showChangelog;
+            } else if (UpdateChecker.isDownloading()) {
+                // Do nothing while downloading
+            } else {
+                UpdateChecker.downloadUpdate();
+            }
+        }).dimensions(panelX + panelW - 115, panelY + 4, 110, 16).build();
+        updateBtn.visible = UpdateChecker.isUpdateAvailable();
+        addDrawableChild(updateBtn);
 
         initMainTab(lx, fw);
         initHumanTab(lx, fw);
@@ -384,7 +405,7 @@ public class FisherScreen extends Screen {
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
         ctx.fill(0, 0, width, height, BG_OVERLAY);
-        drawBorderedRect(ctx, panelX, panelY, panelX + PANEL_W, panelY + PANEL_H, PANEL_BG, PANEL_BORDER);
+        drawBorderedRect(ctx, panelX, panelY, panelX + panelW, panelY + panelH, PANEL_BG, PANEL_BORDER);
 
         // Title
         ctx.drawCenteredTextWithShadow(textRenderer,
@@ -396,13 +417,13 @@ public class FisherScreen extends Screen {
 
         // Tab underline
         int tabY = panelY + 48;
-        int thirdW = (PANEL_W - 42) / 3;
+        int thirdW = (panelW - 42) / 3;
         int tabStartX = panelX + 15 + activeTab * (thirdW + 6);
         ctx.fill(tabStartX, tabY, tabStartX + thirdW, tabY + 2, CYAN);
 
         // Stats bar
-        int sy = panelY + PANEL_H - 50;
-        ctx.fill(panelX + 15, sy, panelX + PANEL_W - 15, sy + 22, SURFACE);
+        int sy = panelY + panelH - 50;
+        ctx.fill(panelX + 15, sy, panelX + panelW - 15, sy + 22, SURFACE);
 
         int catches = handler.getCatchCount();
         int misses = handler.getMissCount();
@@ -413,7 +434,7 @@ public class FisherScreen extends Screen {
                 panelX + 22, sy + 7, TEXT_MAIN);
         ctx.drawTextWithShadow(textRenderer,
                 String.format("%s%02d:%02d", Formatting.AQUA, secs / 60, secs % 60),
-                panelX + PANEL_W - 55, sy + 7, TEXT_MAIN);
+                panelX + panelW - 55, sy + 7, TEXT_MAIN);
 
         // Status line
         String status = handler.getStatusText();
@@ -441,14 +462,18 @@ public class FisherScreen extends Screen {
             renderKillLabels(ctx, lx);
         }
 
-        // Hotkey hint
-        ctx.drawCenteredTextWithShadow(textRenderer,
-                Text.literal("RShift: GUI  |  F6: Toggle  |  ESC: Close").formatted(Formatting.DARK_GRAY),
-                width / 2, panelY + PANEL_H - 14, TEXT_DIM);
-
         // Sound log panel
         if (showSoundLog && activeTab == 0) {
             renderSoundLog(ctx);
+        }
+
+        // Update button refresh + changelog panel
+        if (UpdateChecker.isUpdateAvailable()) {
+            updateBtn.visible = true;
+            updateBtn.setMessage(getUpdateBtnText());
+            if (showChangelog) {
+                renderChangelog(ctx);
+            }
         }
     }
 
@@ -533,10 +558,10 @@ public class FisherScreen extends Screen {
 
     private void renderSoundLog(DrawContext ctx) {
         int logX = panelX;
-        int logY = panelY + PANEL_H + 4;
+        int logY = panelY + panelH + 4;
         int logH = 140;
 
-        drawBorderedRect(ctx, logX, logY, logX + PANEL_W, logY + logH, PANEL_BG, PANEL_BORDER);
+        drawBorderedRect(ctx, logX, logY, logX + panelW, logY + logH, PANEL_BG, PANEL_BORDER);
         ctx.drawTextWithShadow(textRenderer,
                 Text.literal("Event Log:").formatted(Formatting.AQUA).getString(),
                 logX + 8, logY + 4, CYAN);
@@ -558,6 +583,74 @@ public class FisherScreen extends Screen {
             ctx.drawTextWithShadow(textRenderer, entry, logX + 8, ly, col);
             ly += 11;
             if (ly > logY + logH - 6) break;
+        }
+    }
+
+    private void renderChangelog(DrawContext ctx) {
+        int logX = panelX - panelW - 6;
+        int logY = panelY;
+        int logW = panelW;
+        int logH = panelH;
+
+        drawBorderedRect(ctx, logX, logY, logX + logW, logY + logH, PANEL_BG, PANEL_BORDER);
+
+        ctx.drawTextWithShadow(textRenderer,
+                Text.literal("Changelog v" + UpdateChecker.getLatestVersion()).formatted(Formatting.AQUA, Formatting.BOLD).getString(),
+                logX + 8, logY + 8, CYAN);
+
+        ctx.drawTextWithShadow(textRenderer,
+                Text.literal("Current: v" + UpdateChecker.getCurrentVersion()).formatted(Formatting.GRAY).getString(),
+                logX + 8, logY + 20, TEXT_DIM);
+
+        String changelog = UpdateChecker.getChangelog();
+        if (changelog.isEmpty()) {
+            ctx.drawTextWithShadow(textRenderer, "No changelog available.", logX + 8, logY + 38, TEXT_DIM);
+        } else {
+            int ly = logY + 38;
+            // Word-wrap the changelog
+            for (String line : changelog.split("\n")) {
+                if (ly > logY + logH - 12) break;
+                // Truncate long lines
+                String trimmed = line.trim();
+                if (trimmed.isEmpty()) { ly += 6; continue; }
+
+                // Color markdown-ish lines
+                int color = TEXT_MAIN;
+                if (trimmed.startsWith("##") || trimmed.startsWith("**")) {
+                    color = YELLOW;
+                    trimmed = trimmed.replace("#", "").replace("*", "").trim();
+                } else if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
+                    color = TEXT_MAIN;
+                    trimmed = "  " + trimmed;
+                }
+
+                // Wrap if too long
+                while (!trimmed.isEmpty() && ly < logY + logH - 12) {
+                    int maxChars = (logW - 16) / 6; // approximate char width
+                    if (trimmed.length() <= maxChars) {
+                        ctx.drawTextWithShadow(textRenderer, trimmed, logX + 8, ly, color);
+                        ly += 11;
+                        break;
+                    } else {
+                        String part = trimmed.substring(0, maxChars);
+                        int lastSpace = part.lastIndexOf(' ');
+                        if (lastSpace > 0) part = trimmed.substring(0, lastSpace);
+                        ctx.drawTextWithShadow(textRenderer, part, logX + 8, ly, color);
+                        trimmed = trimmed.substring(part.length()).trim();
+                        ly += 11;
+                    }
+                }
+            }
+        }
+    }
+
+    private Text getUpdateBtnText() {
+        if (UpdateChecker.isDownloaded()) {
+            return Text.literal("Restart!").formatted(Formatting.GREEN, Formatting.BOLD);
+        } else if (UpdateChecker.isDownloading()) {
+            return Text.literal("Updating...").formatted(Formatting.YELLOW);
+        } else {
+            return Text.literal("Update v" + UpdateChecker.getLatestVersion()).formatted(Formatting.GREEN);
         }
     }
 

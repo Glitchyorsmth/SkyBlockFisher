@@ -35,6 +35,9 @@ public class SkyBlockFisherClient implements ClientModInitializer {
                 category
         ));
 
+        // Check for updates on startup
+        UpdateChecker.checkAsync();
+
         // Client tick
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // Keybind checks
@@ -47,6 +50,9 @@ public class SkyBlockFisherClient implements ClientModInitializer {
 
             // Fishing tick
             FishingHandler.getInstance().onClientTick();
+
+            // Update notification (retries until player is loaded)
+            UpdateChecker.tickNotify();
         });
     }
 }
