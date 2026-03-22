@@ -337,7 +337,7 @@ public class FishingHandler {
             lastWhisperFrom = "DEATH";
             setRightClickHeld(false);
             setLeftClickHeld(false);
-            chat(Formatting.DARK_RED, "PAUSED — You died! Resume when ready (F6 x2 or GUI).");
+            chat(Formatting.DARK_RED, "PAUSED — You died!");
         }
     }
 
@@ -346,7 +346,7 @@ public class FishingHandler {
         lastWhisperFrom = name;
         setRightClickHeld(false);
         setLeftClickHeld(false);
-        chat(Formatting.RED, "PAUSED — " + name + " spawned! Kill it manually, then resume (F6 x2 or GUI).");
+        chat(Formatting.RED, "PAUSED — " + name + " spawned!");
     }
 
     // ========================================
