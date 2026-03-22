@@ -67,6 +67,7 @@ public class FishingHandler {
 
     // Strider fishing kill detection
     private boolean striderKillDetected = false;
+    private int striderClickCooldown = 0;
 
     // Visual detection: track armor stand entity IDs we've already reacted to
     private final Set<Integer> seenArmorStandIds = new HashSet<>();
@@ -388,6 +389,7 @@ public class FishingHandler {
                         try { Thread.sleep(uniformRange(5, 15)); } catch (InterruptedException ignored) {}
                         doLeftClick(); // first hit immediately
                         striderKillDetected = false;
+                        striderClickCooldown = 0;
                         phase = Phase.STRIDER_KILL;
                         delayTicks = ModConfig.striderKillWaitMax;
                     } else if (ModConfig.flamingFlayEnabled) {
@@ -456,12 +458,15 @@ public class FishingHandler {
                 if (striderKillDetected || delayTicks-- <= 0) {
                     // Kill done or max wait — swap back to rod
                     striderKillDetected = false;
-                    setLeftClickHeld(false);
                     phase = Phase.STRIDER_RETURN;
                     delayTicks = gaussianRange(3, 8);
                 } else {
-                    // Spam left-click every tick
-                    doLeftClick();
+                    // ~14 CPS: click every 1-2 ticks (avg 1.43 ticks = 14 clicks/sec)
+                    if (striderClickCooldown-- <= 0) {
+                        doLeftClick();
+                        // Alternate 1 and 2 tick gaps with slight randomness for ~14 CPS
+                        striderClickCooldown = random.nextInt(3) == 0 ? 2 : 1;
+                    }
                 }
                 break;
 
