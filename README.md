@@ -30,7 +30,7 @@ Detects bites, reels in, kills mobs, and recasts — with built-in humanization 
 
 ### Safety & Alerts
 - **Whisper pause** — auto-pauses and alerts you if someone DMs you
-- **Death pause** — pauses on `☠ You` in chat so you don't AFK after dying
+- **Death pause** — pauses on `☠ You` in chat so you don't fish after dying
 - **Sea creature pause** — individual toggles for dangerous spawns:
   - Thunder | Lord Jawbus
   - Fiery Scuttler | Ragnarok
