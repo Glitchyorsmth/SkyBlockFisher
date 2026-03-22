@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "com.skyblockfisher.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "SoundPacketMixin",
+    "MinecraftClientAccessor",
+    "ChatMixin",
+    "TitleMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

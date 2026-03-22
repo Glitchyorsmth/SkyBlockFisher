@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "skyblockfisher",
+  "version": "${version}",
+  "name": "SkyBlock Fisher",
+  "description": "Auto-fishing macro for Hypixel SkyBlock with sound-based detection.",
+  "authors": ["glitc"],
+  "contact": {},
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.skyblockfisher.SkyBlockFisherClient"]
+  },
+  "mixins": ["skyblockfisher.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.10",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}
