@@ -382,25 +382,22 @@ public class FishingHandler {
                     catchesSinceBreak++;
 
                     if (ModConfig.striderFishingEnabled) {
-                        // Strider: swap to weapon and spam left-click
+                        // Strider: swap to weapon, 1-tick pause, then spam
                         if (mc.player != null) {
                             mc.player.getInventory().setSelectedSlot(ModConfig.striderWeaponSlot - 1);
                         }
-                        try { Thread.sleep(uniformRange(5, 15)); } catch (InterruptedException ignored) {}
-                        doLeftClick(); // first hit immediately
                         striderKillDetected = false;
                         striderClickCooldown = 0;
                         phase = Phase.STRIDER_KILL;
                         delayTicks = ModConfig.striderKillWaitMax;
+                        striderClickCooldown = 1; // 1-tick delay before first hit
                     } else if (ModConfig.flamingFlayEnabled) {
-                        // Flay: swap and hold right-click — instant
+                        // Flay: swap, 1-tick pause, then hold right-click
                         if (mc.player != null) {
                             mc.player.getInventory().setSelectedSlot(ModConfig.flamingFlaySlot - 1);
                         }
-                        doRightClick();
-                        setRightClickHeld(true);
-                        phase = Phase.FLAY_KILL_WAIT;
-                        delayTicks = gaussianRange(ModConfig.flamingFlayKillWaitMin, ModConfig.flamingFlayKillWaitMax);
+                        phase = Phase.FLAY_USE;
+                        delayTicks = 1; // 1-tick delay before attacking
                     } else {
                         goToPostCatch();
                     }
@@ -480,7 +477,9 @@ public class FishingHandler {
                     if (mc.player != null) {
                         mc.player.getInventory().setSelectedSlot(ModConfig.fishingRodSlot - 1);
                     }
-                    goToPostCatch();
+                    // 1-tick pause after swap before recasting
+                    phase = Phase.RECAST_DELAY;
+                    delayTicks = 1;
                 }
                 break;
 
