@@ -68,6 +68,11 @@ public class ModConfig {
     public static int flamingFlayKillWaitMin = 40;     // ~2s
     public static int flamingFlayKillWaitMax = 80;     // ~4s (max wait — exits early on kill sound)
 
+    // --- Strider Fishing ---
+    public static boolean striderFishingEnabled = false;
+    public static int striderWeaponSlot = 3;             // hotbar slot 1-9
+    public static int striderKillWaitMax = 100;           // ~5s max (exits early on kill sound)
+
     // --- Safety ---
     public static boolean antiAfkEnabled = true;
     public static int antiAfkIntervalSec = 240;
@@ -133,6 +138,9 @@ public class ModConfig {
         int flamingFlaySlot = ModConfig.flamingFlaySlot;
         int flamingFlayKillWaitMin = ModConfig.flamingFlayKillWaitMin;
         int flamingFlayKillWaitMax = ModConfig.flamingFlayKillWaitMax;
+        boolean striderFishingEnabled = ModConfig.striderFishingEnabled;
+        int striderWeaponSlot = ModConfig.striderWeaponSlot;
+        int striderKillWaitMax = ModConfig.striderKillWaitMax;
         boolean antiAfkEnabled = ModConfig.antiAfkEnabled;
         int antiAfkIntervalSec = ModConfig.antiAfkIntervalSec;
         int failsafeMinutes = ModConfig.failsafeMinutes;
@@ -170,6 +178,9 @@ public class ModConfig {
             ModConfig.flamingFlaySlot = flamingFlaySlot;
             ModConfig.flamingFlayKillWaitMin = flamingFlayKillWaitMin;
             ModConfig.flamingFlayKillWaitMax = flamingFlayKillWaitMax;
+            ModConfig.striderFishingEnabled = striderFishingEnabled;
+            ModConfig.striderWeaponSlot = striderWeaponSlot;
+            ModConfig.striderKillWaitMax = striderKillWaitMax;
             ModConfig.antiAfkEnabled = antiAfkEnabled;
             ModConfig.antiAfkIntervalSec = antiAfkIntervalSec;
             ModConfig.failsafeMinutes = failsafeMinutes;

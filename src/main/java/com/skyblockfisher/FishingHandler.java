@@ -29,6 +29,7 @@ public class FishingHandler {
     public enum Phase {
         IDLE, WAITING_FOR_BITE, REEL_DELAY, RECAST_DELAY, CAST_WAIT,
         FLAY_SWAP, FLAY_USE, FLAY_KILL_WAIT, FLAY_RETURN,
+        STRIDER_SWAP, STRIDER_KILL, STRIDER_RETURN,
         MICRO_BREAK, SESSION_BREAK, WHISPER_PAUSE
     }
     private boolean enabled = false;
@@ -64,6 +65,9 @@ public class FishingHandler {
     private boolean flayKillDetected = false;
     private int flaySpamCooldown = 0;
 
+    // Strider fishing kill detection
+    private boolean striderKillDetected = false;
+
     // Visual detection: track armor stand entity IDs we've already reacted to
     private final Set<Integer> seenArmorStandIds = new HashSet<>();
 
@@ -84,6 +88,7 @@ public class FishingHandler {
         catchesSinceBreak = 0;
         lastWhisperFrom = null;
         flayKillDetected = false;
+        striderKillDetected = false;
         seenArmorStandIds.clear();
         scheduleNextJitter();
         scheduleNextSessionBreak();
@@ -94,6 +99,7 @@ public class FishingHandler {
         enabled = false;
         phase = Phase.IDLE;
         setRightClickHeld(false); // always release right-click on stop
+        setLeftClickHeld(false);  // always release left-click on stop
         chat(Formatting.RED, "Stopped. Catches: " + catchCount +
                 (missCount > 0 ? " (missed " + missCount + ")" : ""));
     }
@@ -125,6 +131,9 @@ public class FishingHandler {
             case FLAY_USE:         return "Using Flaming Flay...";
             case FLAY_KILL_WAIT:   return "Waiting for kill...";
             case FLAY_RETURN:      return "Swapping back to rod...";
+            case STRIDER_SWAP:     return "Swapping to weapon...";
+            case STRIDER_KILL:     return "Attacking (strider)...";
+            case STRIDER_RETURN:   return "Swapping back to rod...";
             case RECAST_DELAY:     return "Recasting...";
             case CAST_WAIT:        return "Waiting for bobber...";
             case MICRO_BREAK:      return "Micro-break (" + (delayTicks / 20) + "s)";
@@ -167,6 +176,14 @@ public class FishingHandler {
             if (soundPath.contains("entity.experience_orb") || soundPath.contains("entity.player.attack")
                     || soundPath.contains(".death") || soundPath.contains(".kill")) {
                 flayKillDetected = true;
+            }
+        }
+
+        // Detect kill during Strider kill (same sounds)
+        if (enabled && phase == Phase.STRIDER_KILL) {
+            if (soundPath.contains("entity.experience_orb") || soundPath.contains(".death")
+                    || soundPath.contains(".kill")) {
+                striderKillDetected = true;
             }
         }
 
@@ -363,8 +380,18 @@ public class FishingHandler {
                     catchCount++;
                     catchesSinceBreak++;
 
-                    if (ModConfig.flamingFlayEnabled) {
-                        // Same tick: swap then attack with a tiny ms delay between
+                    if (ModConfig.striderFishingEnabled) {
+                        // Strider: swap to weapon and spam left-click
+                        if (mc.player != null) {
+                            mc.player.getInventory().setSelectedSlot(ModConfig.striderWeaponSlot - 1);
+                        }
+                        try { Thread.sleep(uniformRange(5, 15)); } catch (InterruptedException ignored) {}
+                        doLeftClick(); // first hit immediately
+                        striderKillDetected = false;
+                        phase = Phase.STRIDER_KILL;
+                        delayTicks = ModConfig.striderKillWaitMax;
+                    } else if (ModConfig.flamingFlayEnabled) {
+                        // Flay: swap and hold right-click
                         if (mc.player != null) {
                             mc.player.getInventory().setSelectedSlot(ModConfig.flamingFlaySlot - 1);
                         }
@@ -418,6 +445,28 @@ public class FishingHandler {
             case FLAY_RETURN:
                 if (delayTicks-- <= 0) {
                     // Swap back to fishing rod slot
+                    if (mc.player != null) {
+                        mc.player.getInventory().setSelectedSlot(ModConfig.fishingRodSlot - 1);
+                    }
+                    goToPostCatch();
+                }
+                break;
+
+            case STRIDER_KILL:
+                if (striderKillDetected || delayTicks-- <= 0) {
+                    // Kill done or max wait — swap back to rod
+                    striderKillDetected = false;
+                    setLeftClickHeld(false);
+                    phase = Phase.STRIDER_RETURN;
+                    delayTicks = gaussianRange(3, 8);
+                } else {
+                    // Spam left-click every tick
+                    doLeftClick();
+                }
+                break;
+
+            case STRIDER_RETURN:
+                if (delayTicks-- <= 0) {
                     if (mc.player != null) {
                         mc.player.getInventory().setSelectedSlot(ModConfig.fishingRodSlot - 1);
                     }
@@ -608,6 +657,14 @@ public class FishingHandler {
 
     private void setRightClickHeld(boolean held) {
         mc.options.useKey.setPressed(held);
+    }
+
+    private void doLeftClick() {
+        ((MinecraftClientAccessor) mc).invokeDoAttack();
+    }
+
+    private void setLeftClickHeld(boolean held) {
+        mc.options.attackKey.setPressed(held);
     }
 
     private void doAntiAfk() {
