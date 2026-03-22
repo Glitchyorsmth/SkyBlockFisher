@@ -2,14 +2,13 @@ package com.skyblockfisher.gui;
 
 import com.skyblockfisher.FishingHandler;
 import com.skyblockfisher.ModConfig;
+import com.skyblockfisher.UpdateChecker;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
-
-import com.skyblockfisher.UpdateChecker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -27,14 +26,19 @@ public class FisherScreen extends Screen {
     private static final int YELLOW       = 0xFFffd600;
     private static final int TEXT_MAIN    = 0xFFe0e0e0;
     private static final int TEXT_DIM     = 0xFF667788;
-    private static final int ACCENT_DIM   = 0xFF0097b2;
+    private static final int SECTION_BG   = 0xFF111828;
 
     private final FishingHandler handler = FishingHandler.getInstance();
 
     private int panelX, panelY, panelW, panelH;
 
-    // Tab state
-    private int activeTab = 0; // 0 = Main, 1 = Humanization, 2 = Flay
+    // Tab state: 0 = Main, 1 = Anti-Detect, 2 = Killing
+    private int activeTab = 0;
+
+    // Dropdown section states for Anti-Detect tab
+    private boolean sectionHumanOpen = true;
+    private boolean sectionSeaCreatureOpen = false;
+    private boolean sectionSafetyOpen = false;
 
     // Main tab widgets
     private ButtonWidget toggleBtn;
@@ -46,9 +50,11 @@ public class FisherScreen extends Screen {
     private TextFieldWidget recastMinField, recastMaxField;
     private TextFieldWidget failsafeField;
     private ButtonWidget antiAfkBtn;
+    private ButtonWidget chatFeedbackBtn;
     private ButtonWidget soundLogBtn;
 
-    // Humanization tab widgets
+    // Anti-Detect: Humanization widgets
+    private ButtonWidget sectionHumanBtn;
     private ButtonWidget gaussianBtn;
     private ButtonWidget fatigueBtn;
     private ButtonWidget microBreakBtn;
@@ -57,17 +63,24 @@ public class FisherScreen extends Screen {
     private TextFieldWidget sessionIntervalField;
     private TextFieldWidget missChanceField;
     private ButtonWidget cameraJitterBtn;
+
+    // Anti-Detect: Sea Creature widgets
+    private ButtonWidget sectionSeaCreatureBtn;
+    private ButtonWidget thunderBtn;
+    private ButtonWidget jawbusBtn;
+    private ButtonWidget scuttlerBtn;
+    private ButtonWidget ragnarokBtn;
+
+    // Anti-Detect: Safety widgets
+    private ButtonWidget sectionSafetyBtn;
     private ButtonWidget whisperPauseBtn;
+    private ButtonWidget deathPauseBtn;
 
-    // Kill tab widgets — shared
+    // Kill tab widgets
     private TextFieldWidget rodSlotField;
-
-    // Kill tab widgets — Flaming Flay subsection
     private ButtonWidget flayToggleBtn;
     private TextFieldWidget flaySlotField;
     private TextFieldWidget flayKillMinField, flayKillMaxField;
-
-    // Kill tab widgets — Strider subsection
     private ButtonWidget striderToggleBtn;
     private TextFieldWidget striderSlotField;
     private TextFieldWidget striderKillMaxField;
@@ -75,13 +88,12 @@ public class FisherScreen extends Screen {
 
     // Tab buttons
     private ButtonWidget tabMainBtn;
-    private ButtonWidget tabHumanBtn;
+    private ButtonWidget tabAntiDetectBtn;
     private ButtonWidget tabKillBtn;
 
     // Update widgets
     private ButtonWidget updateBtn;
     private boolean showChangelog = false;
-
     private boolean showSoundLog = false;
 
     public FisherScreen() {
@@ -90,7 +102,6 @@ public class FisherScreen extends Screen {
 
     @Override
     protected void init() {
-        // Scale to fit any resolution — cap at max size, shrink if screen is small
         panelW = Math.min(340, width - 20);
         panelH = Math.min(460, height - 20);
         panelX = (width - panelW) / 2;
@@ -103,22 +114,19 @@ public class FisherScreen extends Screen {
         // --- Tab buttons ---
         tabMainBtn = ButtonWidget.builder(Text.literal("Main"), btn -> switchTab(0))
                 .dimensions(lx, panelY + 32, thirdW, 16).build();
-        tabHumanBtn = ButtonWidget.builder(Text.literal("Anti-Detect"), btn -> switchTab(1))
+        tabAntiDetectBtn = ButtonWidget.builder(Text.literal("Anti-Detect"), btn -> switchTab(1))
                 .dimensions(lx + thirdW + 6, panelY + 32, thirdW, 16).build();
         tabKillBtn = ButtonWidget.builder(Text.literal("Killing"), btn -> switchTab(2))
                 .dimensions(lx + (thirdW + 6) * 2, panelY + 32, thirdW, 16).build();
         addDrawableChild(tabMainBtn);
-        addDrawableChild(tabHumanBtn);
+        addDrawableChild(tabAntiDetectBtn);
         addDrawableChild(tabKillBtn);
 
-        // --- Update button (only visible when update available) ---
+        // --- Update button ---
         updateBtn = ButtonWidget.builder(getUpdateBtnText(), btn -> {
             if (UpdateChecker.isDownloaded()) {
-                // Already downloaded, toggle changelog
                 showChangelog = !showChangelog;
-            } else if (UpdateChecker.isDownloading()) {
-                // Do nothing while downloading
-            } else {
+            } else if (!UpdateChecker.isDownloading()) {
                 UpdateChecker.downloadUpdate();
             }
         }).dimensions(panelX + panelW - 115, panelY + 4, 110, 16).build();
@@ -126,80 +134,69 @@ public class FisherScreen extends Screen {
         addDrawableChild(updateBtn);
 
         initMainTab(lx, fw);
-        initHumanTab(lx, fw);
+        initAntiDetectTab(lx, fw);
         initKillTab(lx, fw);
         switchTab(activeTab);
     }
 
+    // ======== MAIN TAB ========
+
     private void initMainTab(int lx, int fw) {
         int y = panelY + 62;
 
-        // Toggle
         toggleBtn = ButtonWidget.builder(getToggleText(), btn -> {
             handler.toggle();
             btn.setMessage(getToggleText());
         }).dimensions(lx, y, fw, 20).build();
         addDrawableChild(toggleBtn);
 
-        // Resume (only visible when whisper-paused)
         resumeBtn = ButtonWidget.builder(
                 Text.literal("RESUME").formatted(Formatting.GREEN, Formatting.BOLD),
-                btn -> {
-                    handler.resumeFromPause();
-                    btn.visible = false;
-                }
+                btn -> { handler.resumeFromPause(); btn.visible = false; }
         ).dimensions(lx, y, fw, 20).build();
         resumeBtn.visible = false;
         addDrawableChild(resumeBtn);
         y += 26;
 
-        // Detection mode (cycles: BOTH -> AUDIO -> VISUAL -> BOTH)
         detectionModeBtn = ButtonWidget.builder(detectionModeText(), btn -> {
             String mode = ModConfig.detectionMode.toUpperCase();
             if (mode.equals("BOTH")) ModConfig.detectionMode = "AUDIO";
             else if (mode.equals("AUDIO")) ModConfig.detectionMode = "VISUAL";
             else ModConfig.detectionMode = "BOTH";
             btn.setMessage(detectionModeText());
-            // Show/hide relevant fields
             updateDetectionFieldVisibility();
         }).dimensions(lx, y, fw, 20).build();
         addDrawableChild(detectionModeBtn);
         y += 26;
 
-        // Sound name (audio detection)
         soundNameField = new TextFieldWidget(textRenderer, lx + 110, y, fw - 110, 16, Text.empty());
         soundNameField.setMaxLength(64);
         soundNameField.setText(ModConfig.targetSound);
         addDrawableChild(soundNameField);
         y += 22;
 
-        // Visual trigger text
         visualTriggerField = new TextFieldWidget(textRenderer, lx + 110, y, fw - 110, 16, Text.empty());
         visualTriggerField.setMaxLength(32);
         visualTriggerField.setText(ModConfig.visualTriggerText);
         addDrawableChild(visualTriggerField);
         y += 26;
 
-        // Reel delay
         reelMinField = makeField(lx + 140, y, 55, String.valueOf(ModConfig.reelDelayMinTicks));
         reelMaxField = makeField(lx + 215, y, 55, String.valueOf(ModConfig.reelDelayMaxTicks));
         addDrawableChild(reelMinField);
         addDrawableChild(reelMaxField);
         y += 24;
 
-        // Recast delay
         recastMinField = makeField(lx + 140, y, 55, String.valueOf(ModConfig.recastDelayMinTicks));
         recastMaxField = makeField(lx + 215, y, 55, String.valueOf(ModConfig.recastDelayMaxTicks));
         addDrawableChild(recastMinField);
         addDrawableChild(recastMaxField);
         y += 24;
 
-        // Failsafe
         failsafeField = makeField(lx + 140, y, 55, String.valueOf(ModConfig.failsafeMinutes));
         addDrawableChild(failsafeField);
         y += 28;
 
-        // Anti-AFK
         antiAfkBtn = makeToggleBtn("Anti-AFK", ModConfig.antiAfkEnabled, lx, y, fw, btn -> {
             ModConfig.antiAfkEnabled = !ModConfig.antiAfkEnabled;
             btn.setMessage(toggleText("Anti-AFK", ModConfig.antiAfkEnabled));
@@ -207,111 +204,208 @@ public class FisherScreen extends Screen {
         addDrawableChild(antiAfkBtn);
         y += 24;
 
-        // Sound log
+        chatFeedbackBtn = makeToggleBtn("Chat Feedback", ModConfig.chatFeedback, lx, y, fw, btn -> {
+            ModConfig.chatFeedback = !ModConfig.chatFeedback;
+            btn.setMessage(toggleText("Chat Feedback", ModConfig.chatFeedback));
+        });
+        addDrawableChild(chatFeedbackBtn);
+        y += 24;
+
         soundLogBtn = ButtonWidget.builder(
                 toggleText("Sound/Event Log", showSoundLog),
-                btn -> {
-                    showSoundLog = !showSoundLog;
-                    btn.setMessage(toggleText("Sound/Event Log", showSoundLog));
-                }
+                btn -> { showSoundLog = !showSoundLog; btn.setMessage(toggleText("Sound/Event Log", showSoundLog)); }
         ).dimensions(lx, y, fw, 20).build();
         addDrawableChild(soundLogBtn);
     }
 
-    private void updateDetectionFieldVisibility() {
-        if (activeTab != 0) return;
-        String mode = ModConfig.detectionMode.toUpperCase();
-        soundNameField.visible = mode.equals("AUDIO") || mode.equals("BOTH");
-        visualTriggerField.visible = mode.equals("VISUAL") || mode.equals("BOTH");
-    }
+    // ======== ANTI-DETECT TAB (with collapsible sections) ========
 
-    private Text detectionModeText() {
-        String mode = ModConfig.detectionMode.toUpperCase();
-        Formatting color;
-        String label;
-        switch (mode) {
-            case "AUDIO":  color = Formatting.GOLD;  label = "AUDIO (ding sound)"; break;
-            case "VISUAL": color = Formatting.LIGHT_PURPLE; label = "VISUAL (!!! title)"; break;
-            default:       color = Formatting.GREEN;  label = "BOTH (sound + visual)"; break;
-        }
-        return Text.literal("Detection: ").append(Text.literal(label).formatted(color));
-    }
-
-    private void initHumanTab(int lx, int fw) {
+    private void initAntiDetectTab(int lx, int fw) {
+        // All widgets are created at y=0 initially; repositioned in layoutAntiDetect()
         int y = panelY + 62;
 
-        // Gaussian delays
-        gaussianBtn = makeToggleBtn("Gaussian Delays (bell curve)", ModConfig.gaussianDelays, lx, y, fw, btn -> {
+        // --- Section: Humanization ---
+        sectionHumanBtn = ButtonWidget.builder(sectionTitle("Humanization", sectionHumanOpen), btn -> {
+            sectionHumanOpen = !sectionHumanOpen;
+            btn.setMessage(sectionTitle("Humanization", sectionHumanOpen));
+            layoutAntiDetect();
+        }).dimensions(lx, y, fw, 16).build();
+        addDrawableChild(sectionHumanBtn);
+
+        gaussianBtn = makeToggleBtn("Gaussian Delays", ModConfig.gaussianDelays, lx, y, fw, btn -> {
             ModConfig.gaussianDelays = !ModConfig.gaussianDelays;
-            btn.setMessage(toggleText("Gaussian Delays (bell curve)", ModConfig.gaussianDelays));
+            btn.setMessage(toggleText("Gaussian Delays", ModConfig.gaussianDelays));
         });
         addDrawableChild(gaussianBtn);
-        y += 24;
 
-        // Fatigue
         fatigueBtn = makeToggleBtn("Fatigue Simulation", ModConfig.fatigueEnabled, lx, y, fw, btn -> {
             ModConfig.fatigueEnabled = !ModConfig.fatigueEnabled;
             btn.setMessage(toggleText("Fatigue Simulation", ModConfig.fatigueEnabled));
         });
         addDrawableChild(fatigueBtn);
-        y += 30;
 
-        // Micro-breaks
         microBreakBtn = makeToggleBtn("Micro-Breaks", ModConfig.microBreaksEnabled, lx, y, fw, btn -> {
             ModConfig.microBreaksEnabled = !ModConfig.microBreaksEnabled;
             btn.setMessage(toggleText("Micro-Breaks", ModConfig.microBreaksEnabled));
         });
         addDrawableChild(microBreakBtn);
-        y += 22;
 
-        // Micro-break chance
         microBreakChanceField = makeField(lx + 160, y, 40, String.valueOf(ModConfig.microBreakChancePercent));
         addDrawableChild(microBreakChanceField);
-        y += 28;
 
-        // Session breaks
         sessionBreakBtn = makeToggleBtn("Session Breaks", ModConfig.sessionBreaksEnabled, lx, y, fw, btn -> {
             ModConfig.sessionBreaksEnabled = !ModConfig.sessionBreaksEnabled;
             btn.setMessage(toggleText("Session Breaks", ModConfig.sessionBreaksEnabled));
         });
         addDrawableChild(sessionBreakBtn);
-        y += 22;
 
-        // Session break interval
         sessionIntervalField = makeField(lx + 160, y, 40, String.valueOf(ModConfig.sessionBreakIntervalMin));
         addDrawableChild(sessionIntervalField);
-        y += 28;
 
-        // Miss chance
         missChanceField = makeField(lx + 160, y, 40, String.valueOf(ModConfig.missChancePercent));
         addDrawableChild(missChanceField);
-        y += 28;
 
-        // Camera jitter
         cameraJitterBtn = makeToggleBtn("Camera Jitter", ModConfig.cameraJitterEnabled, lx, y, fw, btn -> {
             ModConfig.cameraJitterEnabled = !ModConfig.cameraJitterEnabled;
             btn.setMessage(toggleText("Camera Jitter", ModConfig.cameraJitterEnabled));
         });
         addDrawableChild(cameraJitterBtn);
-        y += 24;
 
-        // Whisper pause
+        // --- Section: Sea Creatures ---
+        sectionSeaCreatureBtn = ButtonWidget.builder(sectionTitle("Sea Creatures", sectionSeaCreatureOpen), btn -> {
+            sectionSeaCreatureOpen = !sectionSeaCreatureOpen;
+            btn.setMessage(sectionTitle("Sea Creatures", sectionSeaCreatureOpen));
+            layoutAntiDetect();
+        }).dimensions(lx, y, fw, 16).build();
+        addDrawableChild(sectionSeaCreatureBtn);
+
+        int halfW = (fw - 6) / 2;
+        thunderBtn = makeToggleBtn("Thunder", ModConfig.pauseOnThunder, lx, y, halfW, btn -> {
+            ModConfig.pauseOnThunder = !ModConfig.pauseOnThunder;
+            btn.setMessage(toggleText("Thunder", ModConfig.pauseOnThunder));
+        });
+        addDrawableChild(thunderBtn);
+
+        jawbusBtn = makeToggleBtn("Lord Jawbus", ModConfig.pauseOnJawbus, lx + halfW + 6, y, halfW, btn -> {
+            ModConfig.pauseOnJawbus = !ModConfig.pauseOnJawbus;
+            btn.setMessage(toggleText("Lord Jawbus", ModConfig.pauseOnJawbus));
+        });
+        addDrawableChild(jawbusBtn);
+
+        scuttlerBtn = makeToggleBtn("Fiery Scuttler", ModConfig.pauseOnScuttler, lx, y, halfW, btn -> {
+            ModConfig.pauseOnScuttler = !ModConfig.pauseOnScuttler;
+            btn.setMessage(toggleText("Fiery Scuttler", ModConfig.pauseOnScuttler));
+        });
+        addDrawableChild(scuttlerBtn);
+
+        ragnarokBtn = makeToggleBtn("Ragnarok", ModConfig.pauseOnRagnarok, lx + halfW + 6, y, halfW, btn -> {
+            ModConfig.pauseOnRagnarok = !ModConfig.pauseOnRagnarok;
+            btn.setMessage(toggleText("Ragnarok", ModConfig.pauseOnRagnarok));
+        });
+        addDrawableChild(ragnarokBtn);
+
+        // --- Section: Safety ---
+        sectionSafetyBtn = ButtonWidget.builder(sectionTitle("Safety", sectionSafetyOpen), btn -> {
+            sectionSafetyOpen = !sectionSafetyOpen;
+            btn.setMessage(sectionTitle("Safety", sectionSafetyOpen));
+            layoutAntiDetect();
+        }).dimensions(lx, y, fw, 16).build();
+        addDrawableChild(sectionSafetyBtn);
+
         whisperPauseBtn = makeToggleBtn("Pause on Whisper", ModConfig.whisperPauseEnabled, lx, y, fw, btn -> {
             ModConfig.whisperPauseEnabled = !ModConfig.whisperPauseEnabled;
             btn.setMessage(toggleText("Pause on Whisper", ModConfig.whisperPauseEnabled));
         });
         addDrawableChild(whisperPauseBtn);
+
+        deathPauseBtn = makeToggleBtn("Pause on Death", ModConfig.deathPauseEnabled, lx, y, fw, btn -> {
+            ModConfig.deathPauseEnabled = !ModConfig.deathPauseEnabled;
+            btn.setMessage(toggleText("Pause on Death", ModConfig.deathPauseEnabled));
+        });
+        addDrawableChild(deathPauseBtn);
     }
+
+    /**
+     * Repositions all Anti-Detect widgets based on which sections are open/closed.
+     */
+    private void layoutAntiDetect() {
+        int lx = panelX + 15;
+        int fw = panelW - 30;
+        int halfW = (fw - 6) / 2;
+        int y = panelY + 62;
+
+        // --- Humanization section header ---
+        sectionHumanBtn.setPosition(lx, y);
+        y += 20;
+
+        boolean hOpen = sectionHumanOpen;
+        gaussianBtn.visible = hOpen && activeTab == 1;
+        fatigueBtn.visible = hOpen && activeTab == 1;
+        microBreakBtn.visible = hOpen && activeTab == 1;
+        microBreakChanceField.visible = hOpen && activeTab == 1;
+        sessionBreakBtn.visible = hOpen && activeTab == 1;
+        sessionIntervalField.visible = hOpen && activeTab == 1;
+        missChanceField.visible = hOpen && activeTab == 1;
+        cameraJitterBtn.visible = hOpen && activeTab == 1;
+
+        if (hOpen) {
+            gaussianBtn.setPosition(lx, y); y += 22;
+            fatigueBtn.setPosition(lx, y); y += 22;
+            microBreakBtn.setPosition(lx, y); y += 22;
+            microBreakChanceField.setPosition(lx + 160, y); y += 22;
+            sessionBreakBtn.setPosition(lx, y); y += 22;
+            sessionIntervalField.setPosition(lx + 160, y); y += 22;
+            missChanceField.setPosition(lx + 160, y); y += 22;
+            cameraJitterBtn.setPosition(lx, y); y += 24;
+        }
+
+        // --- Sea Creatures section header ---
+        sectionSeaCreatureBtn.setPosition(lx, y);
+        y += 20;
+
+        boolean scOpen = sectionSeaCreatureOpen;
+        thunderBtn.visible = scOpen && activeTab == 1;
+        jawbusBtn.visible = scOpen && activeTab == 1;
+        scuttlerBtn.visible = scOpen && activeTab == 1;
+        ragnarokBtn.visible = scOpen && activeTab == 1;
+
+        if (scOpen) {
+            thunderBtn.setPosition(lx, y);
+            jawbusBtn.setPosition(lx + halfW + 6, y);
+            y += 22;
+            scuttlerBtn.setPosition(lx, y);
+            ragnarokBtn.setPosition(lx + halfW + 6, y);
+            y += 24;
+        }
+
+        // --- Safety section header ---
+        sectionSafetyBtn.setPosition(lx, y);
+        y += 20;
+
+        boolean safeOpen = sectionSafetyOpen;
+        whisperPauseBtn.visible = safeOpen && activeTab == 1;
+        deathPauseBtn.visible = safeOpen && activeTab == 1;
+
+        if (safeOpen) {
+            whisperPauseBtn.setPosition(lx, y); y += 22;
+            deathPauseBtn.setPosition(lx, y); y += 22;
+        }
+    }
+
+    private Text sectionTitle(String name, boolean open) {
+        String arrow = open ? "\u25BC " : "\u25B6 ";
+        return Text.literal(arrow + name).formatted(Formatting.AQUA, Formatting.BOLD);
+    }
+
+    // ======== KILL TAB ========
 
     private void initKillTab(int lx, int fw) {
         int y = panelY + 62;
 
-        // --- Shared: Rod slot ---
         rodSlotField = makeField(lx + 180, y, 30, String.valueOf(ModConfig.fishingRodSlot));
         addDrawableChild(rodSlotField);
         y += 28;
 
-        // --- Flaming Flay subsection ---
         flayToggleBtn = makeToggleBtn("Flaming Flay", ModConfig.flamingFlayEnabled, lx, y, fw, btn -> {
             ModConfig.flamingFlayEnabled = !ModConfig.flamingFlayEnabled;
             if (ModConfig.flamingFlayEnabled) ModConfig.striderFishingEnabled = false;
@@ -332,7 +426,6 @@ public class FisherScreen extends Screen {
         addDrawableChild(flayKillMaxField);
         y += 32;
 
-        // --- Strider subsection ---
         striderToggleBtn = makeToggleBtn("Strider Kill", ModConfig.striderFishingEnabled, lx, y, fw, btn -> {
             ModConfig.striderFishingEnabled = !ModConfig.striderFishingEnabled;
             if (ModConfig.striderFishingEnabled) ModConfig.flamingFlayEnabled = false;
@@ -354,9 +447,12 @@ public class FisherScreen extends Screen {
         addDrawableChild(striderCpsField);
     }
 
+    // ======== TAB SWITCHING ========
+
     private void switchTab(int tab) {
         activeTab = tab;
-        // Main tab widgets
+
+        // Main tab
         boolean main = tab == 0;
         toggleBtn.visible = main && handler.getPhase() != FishingHandler.Phase.WHISPER_PAUSE;
         resumeBtn.visible = main && handler.getPhase() == FishingHandler.Phase.WHISPER_PAUSE;
@@ -367,6 +463,7 @@ public class FisherScreen extends Screen {
         recastMaxField.visible = main;
         failsafeField.visible = main;
         antiAfkBtn.visible = main;
+        chatFeedbackBtn.visible = main;
         soundLogBtn.visible = main;
         if (main) {
             updateDetectionFieldVisibility();
@@ -375,19 +472,32 @@ public class FisherScreen extends Screen {
             visualTriggerField.visible = false;
         }
 
-        // Human tab widgets
-        boolean human = tab == 1;
-        gaussianBtn.visible = human;
-        fatigueBtn.visible = human;
-        microBreakBtn.visible = human;
-        microBreakChanceField.visible = human;
-        sessionBreakBtn.visible = human;
-        sessionIntervalField.visible = human;
-        missChanceField.visible = human;
-        cameraJitterBtn.visible = human;
-        whisperPauseBtn.visible = human;
+        // Anti-Detect tab — section headers always visible, contents depend on dropdown state
+        boolean ad = tab == 1;
+        sectionHumanBtn.visible = ad;
+        sectionSeaCreatureBtn.visible = ad;
+        sectionSafetyBtn.visible = ad;
+        if (ad) {
+            layoutAntiDetect();
+        } else {
+            // Hide all anti-detect content widgets
+            gaussianBtn.visible = false;
+            fatigueBtn.visible = false;
+            microBreakBtn.visible = false;
+            microBreakChanceField.visible = false;
+            sessionBreakBtn.visible = false;
+            sessionIntervalField.visible = false;
+            missChanceField.visible = false;
+            cameraJitterBtn.visible = false;
+            thunderBtn.visible = false;
+            jawbusBtn.visible = false;
+            scuttlerBtn.visible = false;
+            ragnarokBtn.visible = false;
+            whisperPauseBtn.visible = false;
+            deathPauseBtn.visible = false;
+        }
 
-        // Kill tab widgets
+        // Kill tab
         boolean kill = tab == 2;
         rodSlotField.visible = kill;
         flayToggleBtn.visible = kill;
@@ -400,7 +510,26 @@ public class FisherScreen extends Screen {
         striderCpsField.visible = kill;
     }
 
-    // ---- Rendering ----
+    private void updateDetectionFieldVisibility() {
+        if (activeTab != 0) return;
+        String mode = ModConfig.detectionMode.toUpperCase();
+        soundNameField.visible = mode.equals("AUDIO") || mode.equals("BOTH");
+        visualTriggerField.visible = mode.equals("VISUAL") || mode.equals("BOTH");
+    }
+
+    private Text detectionModeText() {
+        String mode = ModConfig.detectionMode.toUpperCase();
+        Formatting color;
+        String label;
+        switch (mode) {
+            case "AUDIO":  color = Formatting.GOLD;  label = "AUDIO (ding sound)"; break;
+            case "VISUAL": color = Formatting.LIGHT_PURPLE; label = "VISUAL (!!! armor stand)"; break;
+            default:       color = Formatting.GREEN;  label = "BOTH (sound + visual)"; break;
+        }
+        return Text.literal("Detection: ").append(Text.literal(label).formatted(color));
+    }
+
+    // ======== RENDERING ========
 
     @Override
     public void render(DrawContext ctx, int mouseX, int mouseY, float delta) {
@@ -457,7 +586,7 @@ public class FisherScreen extends Screen {
         if (activeTab == 0) {
             renderMainLabels(ctx, lx);
         } else if (activeTab == 1) {
-            renderHumanLabels(ctx, lx);
+            renderAntiDetectLabels(ctx, lx);
         } else {
             renderKillLabels(ctx, lx);
         }
@@ -467,7 +596,7 @@ public class FisherScreen extends Screen {
             renderSoundLog(ctx);
         }
 
-        // Update button refresh + changelog panel
+        // Update button + changelog
         if (UpdateChecker.isUpdateAvailable()) {
             updateBtn.visible = true;
             updateBtn.setMessage(getUpdateBtnText());
@@ -478,21 +607,17 @@ public class FisherScreen extends Screen {
     }
 
     private void renderMainLabels(DrawContext ctx, int lx) {
-        int y = panelY + 62 + 26 + 26; // after toggle + detection mode buttons
+        int y = panelY + 62 + 26 + 26;
         String mode = ModConfig.detectionMode.toUpperCase();
 
-        // Sound name label (only if AUDIO or BOTH)
         if (mode.equals("AUDIO") || mode.equals("BOTH")) {
             ctx.drawTextWithShadow(textRenderer, "Target Sound:", lx, y + 4, TEXT_DIM);
         }
         y += 22;
-
-        // Visual trigger label (only if VISUAL or BOTH)
         if (mode.equals("VISUAL") || mode.equals("BOTH")) {
             ctx.drawTextWithShadow(textRenderer, "Visual Text:", lx, y + 4, TEXT_DIM);
         }
         y += 26;
-
         ctx.drawTextWithShadow(textRenderer, "Reel Delay (ticks):", lx, y + 4, TEXT_DIM);
         ctx.drawTextWithShadow(textRenderer, "-", lx + 200, y + 4, TEXT_DIM);
         y += 24;
@@ -502,40 +627,30 @@ public class FisherScreen extends Screen {
         ctx.drawTextWithShadow(textRenderer, "Failsafe (minutes):", lx, y + 4, TEXT_DIM);
     }
 
-    private void renderHumanLabels(DrawContext ctx, int lx) {
-        int y = panelY + 62;
-
-        // Section header
-        ctx.drawTextWithShadow(textRenderer,
-                Text.literal("These features make your fishing look human").formatted(Formatting.DARK_GRAY).getString(),
-                lx, panelY + 52, TEXT_DIM);
-
-        y += 54; // after gaussian + fatigue buttons
-        // Skip to micro-break chance label
-        y += 22;
-        ctx.drawTextWithShadow(textRenderer, "Break chance (%):", lx, y + 4, TEXT_DIM);
-
-        y += 28; // session breaks button
-        y += 22;
-        ctx.drawTextWithShadow(textRenderer, "Break interval (min):", lx, y + 4, TEXT_DIM);
-
-        y += 28;
-        ctx.drawTextWithShadow(textRenderer, "Miss chance (%):", lx, y + 4, TEXT_DIM);
+    private void renderAntiDetectLabels(DrawContext ctx, int lx) {
+        // Labels are drawn next to fields based on current layout positions
+        if (sectionHumanOpen) {
+            // Draw labels next to the text fields
+            ctx.drawTextWithShadow(textRenderer, "Break chance (%):", lx,
+                    microBreakChanceField.getY() + 4, TEXT_DIM);
+            ctx.drawTextWithShadow(textRenderer, "Break interval (min):", lx,
+                    sessionIntervalField.getY() + 4, TEXT_DIM);
+            ctx.drawTextWithShadow(textRenderer, "Miss chance (%):", lx,
+                    missChanceField.getY() + 4, TEXT_DIM);
+        }
     }
 
     private void renderKillLabels(DrawContext ctx, int lx) {
         int y = panelY + 62;
 
-        // Shared rod slot
         ctx.drawTextWithShadow(textRenderer, "Fishing Rod Slot (1-9):", lx, y + 4, TEXT_DIM);
         y += 28;
 
-        // --- Flaming Flay section header ---
+        // Flaming Flay section
         ctx.drawTextWithShadow(textRenderer,
                 Text.literal("--- Flaming Flay ---").formatted(Formatting.GOLD).getString(),
                 lx, y - 8, YELLOW);
-        y += 22; // after toggle
-
+        y += 22;
         ctx.drawTextWithShadow(textRenderer, "Flay Slot (1-9):", lx + 10, y + 4, TEXT_DIM);
         y += 22;
         ctx.drawTextWithShadow(textRenderer, "Kill Wait Min (ticks):", lx + 10, y + 4, TEXT_DIM);
@@ -543,12 +658,11 @@ public class FisherScreen extends Screen {
         ctx.drawTextWithShadow(textRenderer, "Kill Wait Max (ticks):", lx + 10, y + 4, TEXT_DIM);
         y += 32;
 
-        // --- Strider section header ---
+        // Strider section
         ctx.drawTextWithShadow(textRenderer,
                 Text.literal("--- Strider Kill ---").formatted(Formatting.RED).getString(),
                 lx, y - 8, RED);
-        y += 22; // after toggle
-
+        y += 22;
         ctx.drawTextWithShadow(textRenderer, "Weapon Slot (1-9):", lx + 10, y + 4, TEXT_DIM);
         y += 22;
         ctx.drawTextWithShadow(textRenderer, "Kill Wait Max (ticks):", lx + 10, y + 4, TEXT_DIM);
@@ -574,7 +688,7 @@ public class FisherScreen extends Screen {
             String entry = log.get(i);
             int col;
             if (entry.startsWith("[TITLE]")) {
-                col = entry.contains(ModConfig.visualTriggerText) ? 0xFFff69b4 : 0xFFaa88cc; // pink if match
+                col = entry.contains(ModConfig.visualTriggerText) ? 0xFFff69b4 : 0xFFaa88cc;
             } else if (entry.contains(ModConfig.targetSound)) {
                 col = GREEN;
             } else {
@@ -593,11 +707,9 @@ public class FisherScreen extends Screen {
         int logH = panelH;
 
         drawBorderedRect(ctx, logX, logY, logX + logW, logY + logH, PANEL_BG, PANEL_BORDER);
-
         ctx.drawTextWithShadow(textRenderer,
                 Text.literal("Changelog v" + UpdateChecker.getLatestVersion()).formatted(Formatting.AQUA, Formatting.BOLD).getString(),
                 logX + 8, logY + 8, CYAN);
-
         ctx.drawTextWithShadow(textRenderer,
                 Text.literal("Current: v" + UpdateChecker.getCurrentVersion()).formatted(Formatting.GRAY).getString(),
                 logX + 8, logY + 20, TEXT_DIM);
@@ -607,14 +719,10 @@ public class FisherScreen extends Screen {
             ctx.drawTextWithShadow(textRenderer, "No changelog available.", logX + 8, logY + 38, TEXT_DIM);
         } else {
             int ly = logY + 38;
-            // Word-wrap the changelog
             for (String line : changelog.split("\n")) {
                 if (ly > logY + logH - 12) break;
-                // Truncate long lines
                 String trimmed = line.trim();
                 if (trimmed.isEmpty()) { ly += 6; continue; }
-
-                // Color markdown-ish lines
                 int color = TEXT_MAIN;
                 if (trimmed.startsWith("##") || trimmed.startsWith("**")) {
                     color = YELLOW;
@@ -623,10 +731,8 @@ public class FisherScreen extends Screen {
                     color = TEXT_MAIN;
                     trimmed = "  " + trimmed;
                 }
-
-                // Wrap if too long
                 while (!trimmed.isEmpty() && ly < logY + logH - 12) {
-                    int maxChars = (logW - 16) / 6; // approximate char width
+                    int maxChars = (logW - 16) / 6;
                     if (trimmed.length() <= maxChars) {
                         ctx.drawTextWithShadow(textRenderer, trimmed, logX + 8, ly, color);
                         ly += 11;
@@ -644,17 +750,7 @@ public class FisherScreen extends Screen {
         }
     }
 
-    private Text getUpdateBtnText() {
-        if (UpdateChecker.isDownloaded()) {
-            return Text.literal("Restart!").formatted(Formatting.GREEN, Formatting.BOLD);
-        } else if (UpdateChecker.isDownloading()) {
-            return Text.literal("Updating...").formatted(Formatting.YELLOW);
-        } else {
-            return Text.literal("Update v" + UpdateChecker.getLatestVersion()).formatted(Formatting.GREEN);
-        }
-    }
-
-    // ---- Helpers ----
+    // ======== HELPERS ========
 
     private void drawBorderedRect(DrawContext ctx, int x1, int y1, int x2, int y2, int fill, int border) {
         ctx.fill(x1, y1, x2, y2, border);
@@ -684,6 +780,16 @@ public class FisherScreen extends Screen {
         field.setMaxLength(8);
         field.setText(value);
         return field;
+    }
+
+    private Text getUpdateBtnText() {
+        if (UpdateChecker.isDownloaded()) {
+            return Text.literal("Restart!").formatted(Formatting.GREEN, Formatting.BOLD);
+        } else if (UpdateChecker.isDownloading()) {
+            return Text.literal("Updating...").formatted(Formatting.YELLOW);
+        } else {
+            return Text.literal("Update v" + UpdateChecker.getLatestVersion()).formatted(Formatting.GREEN);
+        }
     }
 
     @Override

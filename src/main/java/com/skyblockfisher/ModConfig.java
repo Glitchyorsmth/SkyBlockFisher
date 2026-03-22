@@ -82,6 +82,18 @@ public class ModConfig {
     // Whisper/DM detection: pause if someone messages you
     public static boolean whisperPauseEnabled = true;
 
+    // Chat feedback: show chat messages for bite detected, toggle, swap, etc.
+    public static boolean chatFeedback = true;
+
+    // Sea creature / boss pause
+    public static boolean pauseOnRagnarok = true;
+    public static boolean pauseOnThunder = true;
+    public static boolean pauseOnJawbus = true;
+    public static boolean pauseOnScuttler = true;
+
+    // Death detection
+    public static boolean deathPauseEnabled = true;
+
     // --- Persistence ---
     public static void load() {
         if (Files.exists(CONFIG_PATH)) {
@@ -147,6 +159,12 @@ public class ModConfig {
         int antiAfkIntervalSec = ModConfig.antiAfkIntervalSec;
         int failsafeMinutes = ModConfig.failsafeMinutes;
         boolean whisperPauseEnabled = ModConfig.whisperPauseEnabled;
+        boolean chatFeedback = ModConfig.chatFeedback;
+        boolean pauseOnRagnarok = ModConfig.pauseOnRagnarok;
+        boolean pauseOnThunder = ModConfig.pauseOnThunder;
+        boolean pauseOnJawbus = ModConfig.pauseOnJawbus;
+        boolean pauseOnScuttler = ModConfig.pauseOnScuttler;
+        boolean deathPauseEnabled = ModConfig.deathPauseEnabled;
 
         void apply() {
             ModConfig.detectionMode = detectionMode;
@@ -188,6 +206,12 @@ public class ModConfig {
             ModConfig.antiAfkIntervalSec = antiAfkIntervalSec;
             ModConfig.failsafeMinutes = failsafeMinutes;
             ModConfig.whisperPauseEnabled = whisperPauseEnabled;
+            ModConfig.chatFeedback = chatFeedback;
+            ModConfig.pauseOnRagnarok = pauseOnRagnarok;
+            ModConfig.pauseOnThunder = pauseOnThunder;
+            ModConfig.pauseOnJawbus = pauseOnJawbus;
+            ModConfig.pauseOnScuttler = pauseOnScuttler;
+            ModConfig.deathPauseEnabled = deathPauseEnabled;
         }
     }
 }

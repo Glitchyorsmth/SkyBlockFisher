@@ -93,6 +93,10 @@ public class FishingHandler {
         seenArmorStandIds.clear();
         scheduleNextJitter();
         scheduleNextSessionBreak();
+        // Auto-swap to fishing rod slot on start
+        if (mc.player != null && (ModConfig.flamingFlayEnabled || ModConfig.striderFishingEnabled)) {
+            mc.player.getInventory().setSelectedSlot(ModConfig.fishingRodSlot - 1);
+        }
         chat(Formatting.GREEN, "Started! Hold your fishing rod.");
     }
 
@@ -308,11 +312,41 @@ public class FishingHandler {
 
         // Also detect staff-related messages
         if (lower.contains("a]") && lower.contains("watchdog")) {
-            // Could be a Watchdog notification — pause immediately
             phase = Phase.WHISPER_PAUSE;
             lastWhisperFrom = "WATCHDOG";
             chat(Formatting.DARK_RED, "PAUSED — Watchdog activity detected in chat!");
         }
+
+        // Sea creature / boss spawn detection — pause to avoid death
+        if (ModConfig.pauseOnRagnarok && message.contains("The sky darkens and the air thickens")) {
+            pauseForSeaCreature("Ragnarok");
+        }
+        if (ModConfig.pauseOnThunder && message.contains("You hear a massive rumble as Thunder emerges")) {
+            pauseForSeaCreature("Thunder");
+        }
+        if (ModConfig.pauseOnJawbus && message.contains("You have angered a legendary creature... Lord Jawbus has arrived")) {
+            pauseForSeaCreature("Lord Jawbus");
+        }
+        if (ModConfig.pauseOnScuttler && message.contains("A Fiery Scuttler inconspicuously waddles up to you")) {
+            pauseForSeaCreature("Fiery Scuttler");
+        }
+
+        // Death detection — pause and clean up
+        if (ModConfig.deathPauseEnabled && message.contains("\u2620 You")) {
+            phase = Phase.WHISPER_PAUSE;
+            lastWhisperFrom = "DEATH";
+            setRightClickHeld(false);
+            setLeftClickHeld(false);
+            chat(Formatting.DARK_RED, "PAUSED — You died! Resume when ready (F6 x2 or GUI).");
+        }
+    }
+
+    private void pauseForSeaCreature(String name) {
+        phase = Phase.WHISPER_PAUSE;
+        lastWhisperFrom = name;
+        setRightClickHeld(false);
+        setLeftClickHeld(false);
+        chat(Formatting.RED, "PAUSED — " + name + " spawned! Kill it manually, then resume (F6 x2 or GUI).");
     }
 
     // ========================================
@@ -685,6 +719,7 @@ public class FishingHandler {
     }
 
     private void chat(Formatting color, String message) {
+        if (!ModConfig.chatFeedback) return;
         if (mc.player != null) {
             mc.player.sendMessage(
                     Text.literal("[Fisher] ").formatted(color)
