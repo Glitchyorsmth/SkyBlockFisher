@@ -460,11 +460,17 @@ public class FishingHandler {
                     phase = Phase.STRIDER_RETURN;
                     delayTicks = gaussianRange(3, 8);
                 } else {
-                    // ~14 CPS: click every 1-2 ticks (avg 1.43 ticks = 14 clicks/sec)
+                    // Configurable CPS: convert to tick interval
                     if (striderClickCooldown-- <= 0) {
                         doLeftClick();
-                        // Alternate 1 and 2 tick gaps with slight randomness for ~14 CPS
-                        striderClickCooldown = random.nextInt(3) == 0 ? 2 : 1;
+                        int cps = Math.max(1, Math.min(20, ModConfig.striderCps));
+                        // 20 ticks/sec ÷ CPS = ticks per click
+                        // Use randomized rounding to hit the target CPS on average
+                        float ticksPerClick = 20.0f / cps;
+                        int base = (int) ticksPerClick;
+                        float frac = ticksPerClick - base;
+                        striderClickCooldown = random.nextFloat() < frac ? base + 1 : base;
+                        if (striderClickCooldown < 1) striderClickCooldown = 1;
                     }
                 }
                 break;

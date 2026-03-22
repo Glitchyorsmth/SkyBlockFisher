@@ -72,6 +72,7 @@ public class ModConfig {
     public static boolean striderFishingEnabled = false;
     public static int striderWeaponSlot = 3;             // hotbar slot 1-9
     public static int striderKillWaitMax = 100;           // ~5s max (exits early on kill sound)
+    public static int striderCps = 14;                    // clicks per second (1-20)
 
     // --- Safety ---
     public static boolean antiAfkEnabled = true;
@@ -141,6 +142,7 @@ public class ModConfig {
         boolean striderFishingEnabled = ModConfig.striderFishingEnabled;
         int striderWeaponSlot = ModConfig.striderWeaponSlot;
         int striderKillWaitMax = ModConfig.striderKillWaitMax;
+        int striderCps = ModConfig.striderCps;
         boolean antiAfkEnabled = ModConfig.antiAfkEnabled;
         int antiAfkIntervalSec = ModConfig.antiAfkIntervalSec;
         int failsafeMinutes = ModConfig.failsafeMinutes;
@@ -181,6 +183,7 @@ public class ModConfig {
             ModConfig.striderFishingEnabled = striderFishingEnabled;
             ModConfig.striderWeaponSlot = striderWeaponSlot;
             ModConfig.striderKillWaitMax = striderKillWaitMax;
+            ModConfig.striderCps = striderCps;
             ModConfig.antiAfkEnabled = antiAfkEnabled;
             ModConfig.antiAfkIntervalSec = antiAfkIntervalSec;
             ModConfig.failsafeMinutes = failsafeMinutes;
