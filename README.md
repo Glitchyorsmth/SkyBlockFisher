@@ -6,15 +6,26 @@ Detects bites, reels in, kills mobs, and recasts — all with built-in humanizat
 
 ## Features
 
+### Fishing
 - **Auto-fishing** — casts, waits for bite, reels in, recasts automatically
 - **Bite detection** — audio (ding sound), visual (armor stand "!!!"), or both
 - **Flaming Flay** — auto-swaps to Flay and holds right-click to kill after catching
-- **Strider Fishing** — auto-swaps to weapon and left-click spams at ~14 CPS to kill
-- **Anti-detection** — Gaussian delays, fatigue simulation, camera jitter, micro-breaks, session breaks, occasional misses
+- **Strider Fishing** — auto-swaps to weapon and left-click spams at configurable CPS to kill
+- **Sound log** — shows recent sounds to help identify the right bite sound
+
+### Anti-Detection
+- **Gaussian delays** — bell-curve distributed timing instead of uniform random
+- **Fatigue simulation** — reaction times gradually slow over the session
+- **Camera jitter** — small random look movements while waiting
+- **Micro-breaks** — short random pauses between catches
+- **Session breaks** — longer periodic pauses to simulate real play
+- **Occasional misses** — randomly skips a bite to look human
 - **Whisper pause** — auto-pauses and alerts you if someone DMs you
 - **Watchdog alerts** — pauses if Watchdog activity is detected in chat
-- **Sound log** — shows recent sounds to help identify the right bite sound
+
+### General
 - **In-game GUI** — configure everything without leaving the game
+- **Config persistence** — settings saved to `skyblockfisher.json`
 
 ## Install
 
