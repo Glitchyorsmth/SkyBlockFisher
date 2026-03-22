@@ -1,28 +1,27 @@
 SkyBlock Fisher - Auto-Fishing Mod (Fabric 1.21.10)
 ===================================================
 
-REQUIREMENTS
-------------
-- Java 21 (JDK) — download from https://adoptium.net
-- Minecraft 1.21.10 with Fabric Loader installed
-
-BUILD
------
-1. Open a terminal in the SkyBlockFisher folder
-2. Run:
-       .\gradlew.bat build        (Windows)
-       ./gradlew build            (Mac/Linux)
-
-   Everything is included — no need to install Gradle.
-   First run downloads Minecraft + mappings and takes a few minutes.
-
-3. The built JAR is at: build/libs/SkyBlockFisher-1.0.0.jar
-
 INSTALL
 -------
-Drop TWO jars into your mods folder:
-  1. SkyBlockFisher-1.0.0.jar  (from build/libs/)
-  2. Fabric API                (download from https://modrinth.com/mod/fabric-api)
+1. Download SkyBlockFisher-1.0.0.jar from the Releases page:
+   https://github.com/Glitchyorsmth/SkyBlockFisher/releases
+
+2. Download Fabric API for 1.21.10 from:
+   https://modrinth.com/mod/fabric-api
+
+3. Drop BOTH jars into your mods folder
+
+4. Launch Minecraft with Fabric 1.21.10
+
+That's it. No building, no Java, no terminal commands.
+
+BUILD FROM SOURCE (optional)
+----------------------------
+Only if you want to modify the code yourself:
+  1. Install Java 21 JDK (https://adoptium.net)
+  2. Open a terminal in the SkyBlockFisher folder
+  3. Run:  .\gradlew.bat build  (Windows)  or  ./gradlew build  (Mac/Linux)
+  4. JAR is at: build/libs/SkyBlockFisher-1.0.0.jar
 
 IN-GAME USAGE
 -------------

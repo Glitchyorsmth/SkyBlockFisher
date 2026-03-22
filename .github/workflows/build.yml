@@ -1,0 +1,44 @@
+name: Build & Release
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Build with Gradle
+        run: chmod +x gradlew && ./gradlew build
+
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyBlockFisher
+          path: build/libs/SkyBlockFisher-*.jar
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          name: SkyBlock Fisher v1.0.${{ github.run_number }}
+          body: |
+            ## Download
+            Grab `SkyBlockFisher-1.0.0.jar` below and drop it in your mods folder.
+
+            **Requirements:**
+            - Minecraft 1.21.10 with Fabric Loader
+            - [Fabric API](https://modrinth.com/mod/fabric-api) in your mods folder
+
+            **Usage:**
+            - Right Shift → Open GUI
+            - F6 → Toggle fishing
+          files: build/libs/SkyBlockFisher-1.0.0.jar
