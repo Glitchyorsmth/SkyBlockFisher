@@ -393,13 +393,12 @@ public class FishingHandler {
                         phase = Phase.STRIDER_KILL;
                         delayTicks = ModConfig.striderKillWaitMax;
                     } else if (ModConfig.flamingFlayEnabled) {
-                        // Flay: swap and hold right-click
+                        // Flay: swap and hold right-click — instant
                         if (mc.player != null) {
                             mc.player.getInventory().setSelectedSlot(ModConfig.flamingFlaySlot - 1);
                         }
-                        try { Thread.sleep(uniformRange(5, 15)); } catch (InterruptedException ignored) {}
-                        doRightClick(); // initial click
-                        setRightClickHeld(true); // then hold
+                        doRightClick();
+                        setRightClickHeld(true);
                         phase = Phase.FLAY_KILL_WAIT;
                         delayTicks = gaussianRange(ModConfig.flamingFlayKillWaitMin, ModConfig.flamingFlayKillWaitMax);
                     } else {
