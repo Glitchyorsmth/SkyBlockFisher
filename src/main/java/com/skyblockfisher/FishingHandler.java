@@ -430,16 +430,16 @@ public class FishingHandler {
 
             case FLAY_KILL_WAIT:
                 if (flayKillDetected) {
-                    // Kill detected — release and swap back
+                    // Kill detected — release and swap back immediately
                     setRightClickHeld(false);
                     flayKillDetected = false;
                     phase = Phase.FLAY_RETURN;
-                    delayTicks = gaussianRange(5, 15);
+                    delayTicks = uniformRange(0, 1);
                 } else if (delayTicks-- <= 0) {
-                    // Max wait elapsed — release and swap back anyway
+                    // Max wait elapsed — release and swap back
                     setRightClickHeld(false);
                     phase = Phase.FLAY_RETURN;
-                    delayTicks = gaussianRange(3, 8);
+                    delayTicks = uniformRange(0, 1);
                 }
                 // Right-click stays held the entire time
                 break;
