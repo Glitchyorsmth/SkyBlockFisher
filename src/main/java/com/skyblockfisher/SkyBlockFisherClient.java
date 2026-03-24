@@ -35,7 +35,9 @@ public class SkyBlockFisherClient implements ClientModInitializer {
                 category
         ));
 
-        // Check for updates on startup
+        // Clean up any pending updates from last session
+        UpdateChecker.applyPendingUpdate();
+        // Check for new updates
         UpdateChecker.checkAsync();
 
         // Client tick

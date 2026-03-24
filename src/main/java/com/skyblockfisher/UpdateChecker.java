@@ -160,8 +160,34 @@ public class UpdateChecker {
     }
 
     /**
-     * Download the latest JAR into the mods folder, renaming the old one.
-     * Called from the GUI update button.
+     * On mod init, check if a previous update was staged (.update file exists).
+     * If so, the shutdown hook from last session should have already swapped it.
+     * Clean up any leftover .old files.
+     */
+    public static void applyPendingUpdate() {
+        try {
+            Path modsDir = FabricLoader.getInstance().getGameDir().resolve("mods");
+            // Clean up .old files from previous update
+            Files.list(modsDir)
+                    .filter(p -> p.getFileName().toString().startsWith("SkyBlockFisher") && p.toString().endsWith(".old"))
+                    .forEach(p -> { try { Files.deleteIfExists(p); } catch (Exception ignored) {} });
+
+            // Check if .update file exists (shutdown hook didn't run — do swap now)
+            Files.list(modsDir)
+                    .filter(p -> p.getFileName().toString().startsWith("SkyBlockFisher") && p.toString().endsWith(".update"))
+                    .forEach(p -> {
+                        try {
+                            String name = p.getFileName().toString().replace(".update", "");
+                            Path target = p.resolveSibling(name);
+                            Files.move(p, target, StandardCopyOption.REPLACE_EXISTING);
+                        } catch (Exception ignored) {}
+                    });
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * Download the new JAR as .update, register a shutdown hook to swap files
+     * when the game closes. No file locking issues.
      */
     public static void downloadUpdate() {
         if (downloadUrl.isEmpty() || downloading || downloaded) return;
@@ -169,44 +195,51 @@ public class UpdateChecker {
 
         new Thread(() -> {
             try {
-                // Find the mods folder
                 Path modsDir = FabricLoader.getInstance().getGameDir().resolve("mods");
+                String fileName = "SkyBlockFisher-" + latestVersion + ".jar";
+                Path staged = modsDir.resolve(fileName + ".update");
 
-                // Find and rename the current mod JAR
-                Path currentJar = FabricLoader.getInstance()
-                        .getModContainer("skyblockfisher")
-                        .flatMap(c -> c.getOrigin().getPaths().stream().findFirst())
-                        .orElse(null);
-
-                if (currentJar != null && Files.exists(currentJar)) {
-                    Path disabled = currentJar.resolveSibling(currentJar.getFileName() + ".old");
-                    Files.move(currentJar, disabled, StandardCopyOption.REPLACE_EXISTING);
-                }
-
-                // Download new JAR
+                // Download new JAR as .update file
                 HttpURLConnection conn = (HttpURLConnection) new URL(downloadUrl).openConnection();
                 conn.setRequestProperty("User-Agent", "SkyBlockFisher/" + CURRENT_VERSION);
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(30000);
                 conn.setInstanceFollowRedirects(true);
 
-                String fileName = "SkyBlockFisher-" + latestVersion + ".jar";
-                Path target = modsDir.resolve(fileName);
-
                 try (InputStream is = conn.getInputStream()) {
-                    Files.copy(is, target, StandardCopyOption.REPLACE_EXISTING);
+                    Files.copy(is, staged, StandardCopyOption.REPLACE_EXISTING);
                 }
+
+                // Register shutdown hook to swap files when game closes
+                Path currentJar = FabricLoader.getInstance()
+                        .getModContainer("skyblockfisher")
+                        .flatMap(c -> c.getOrigin().getPaths().stream().findFirst())
+                        .orElse(null);
+
+                Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+                    try {
+                        // Rename old JAR to .old
+                        if (currentJar != null && Files.exists(currentJar)) {
+                            Files.move(currentJar, currentJar.resolveSibling(currentJar.getFileName() + ".old"),
+                                    StandardCopyOption.REPLACE_EXISTING);
+                        }
+                        // Rename .update to .jar
+                        Path target = staged.resolveSibling(fileName);
+                        Files.move(staged, target, StandardCopyOption.REPLACE_EXISTING);
+                    } catch (Exception e) {
+                        System.out.println("[SkyBlockFisher] Shutdown update swap failed: " + e.getMessage());
+                    }
+                }, "SkyBlockFisher-UpdateSwap"));
 
                 downloaded = true;
                 downloading = false;
 
-                // Notify in chat
                 MinecraftClient.getInstance().execute(() -> {
                     MinecraftClient mc = MinecraftClient.getInstance();
                     if (mc.player != null) {
                         mc.player.sendMessage(
                                 Text.literal("[Fisher] ").formatted(Formatting.AQUA)
-                                        .append(Text.literal("Updated to v" + latestVersion + "! Restart Minecraft to apply.").formatted(Formatting.GREEN)),
+                                        .append(Text.literal("v" + latestVersion + " downloaded! It will be applied when you close Minecraft.").formatted(Formatting.GREEN)),
                                 false
                         );
                     }

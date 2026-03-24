@@ -123,12 +123,20 @@ public class FisherScreen extends Screen {
         addDrawableChild(tabKillBtn);
 
         // --- Update button ---
+        // First click: show changelog. Second click: download. After download: toggle changelog.
         updateBtn = ButtonWidget.builder(getUpdateBtnText(), btn -> {
             if (UpdateChecker.isDownloaded()) {
                 showChangelog = !showChangelog;
-            } else if (!UpdateChecker.isDownloading()) {
+            } else if (UpdateChecker.isDownloading()) {
+                // do nothing
+            } else if (!showChangelog) {
+                // First click — show changelog so user sees what's new
+                showChangelog = true;
+            } else {
+                // Changelog already showing, second click — download
                 UpdateChecker.downloadUpdate();
             }
+            btn.setMessage(getUpdateBtnText());
         }).dimensions(panelX + panelW - 115, panelY + 4, 110, 16).build();
         updateBtn.visible = UpdateChecker.isUpdateAvailable();
         addDrawableChild(updateBtn);
@@ -784,11 +792,15 @@ public class FisherScreen extends Screen {
 
     private Text getUpdateBtnText() {
         if (UpdateChecker.isDownloaded()) {
-            return Text.literal("Restart!").formatted(Formatting.GREEN, Formatting.BOLD);
+            return showChangelog
+                    ? Text.literal("Close Log").formatted(Formatting.GRAY)
+                    : Text.literal("Closing = Updated").formatted(Formatting.GREEN, Formatting.BOLD);
         } else if (UpdateChecker.isDownloading()) {
-            return Text.literal("Updating...").formatted(Formatting.YELLOW);
+            return Text.literal("Downloading...").formatted(Formatting.YELLOW);
+        } else if (showChangelog) {
+            return Text.literal("Install v" + UpdateChecker.getLatestVersion()).formatted(Formatting.GREEN, Formatting.BOLD);
         } else {
-            return Text.literal("Update v" + UpdateChecker.getLatestVersion()).formatted(Formatting.GREEN);
+            return Text.literal("v" + UpdateChecker.getLatestVersion() + " available").formatted(Formatting.YELLOW);
         }
     }
 
